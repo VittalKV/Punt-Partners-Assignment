@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Voice Conversation App</title>
+    <style>
+        body {
+            font-family: Arial, Helvetica, sans-serif;
+            background-color: #f4f4f4;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .container {
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+        button {
+            padding: 10px 20px;
+            margin: 10px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            background-color: #28a745;
+            color: white;
+        }
+        button:disabled {
+            background-color: #cccccc;
+        }
+        #status {
+            margin-top: 20px;
+            color: #555;
+        }
+    </style>
+    <script>
+        const startButton = document.getElementById('start');
+        const stopButton = document.getElementById('stop');
+        const status = document.getElementById('status');
+
+        let mediaRecorder;
+        let audioChunks = [];
+
+        startButton.addEventListener('click', () => {
+            navigator.mediaDevices.getUserMedia({ audio: true })
+                .then(stream => {
+                    mediaRecorder = new MediaRecorder(stream);
+                    mediaRecorder.start();
+
+                    mediaRecorder.addEventListener('dataavailable', event => {
+                        audioChunks.push(event.data);
+                    });
+
+                    mediaRecorder.addEventListener('stop', () => {
+                        const audioBlob = new Blob(audioChunks);
+                        audioChunks = [];
+
+                        const formData = new FormData();
+                        formData.append('audio', audioBlob, 'audio.wav');
+
+                        fetch('/process-audio', {
+                            method: 'POST',
+                            body: formData
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            status.textContent = 'Response: ' + data.response;
+                        });
+                    });
+
+                    startButton.disabled = true;
+                    stopButton.disabled = false;
+                    status.textContent = 'Recording...';
+                });
+        });
+
+        stopButton.addEventListener('click', () => {
+            mediaRecorder.stop();
+            startButton.disabled = false;
+            stopButton.disabled = true;
+            status.textContent = 'Processing...';
+        });
+    </script>
+</head>
+<body>
+    <div class="container">
+        <h1>Voice Conversation App</h1>
+        <button id="start">Start Recording</button>
+        <button id="Stop" disabled>Stop Recording</button>
+        <p id="status">Press "Start Recording" to begin</p>
+    </div>
+</body>
+</html>
